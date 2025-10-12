@@ -1,0 +1,13 @@
+# Ignore everything inside these folders
+raw/*
+processed/*
+
+# But keep the folders themselves (so Git doesn’t delete them)
+!raw/.gitkeep
+!processed/.gitkeep
+
+# Optional: ignore other clutter
+__pycache__/
+*.log
+*.bak
+*.tmp
