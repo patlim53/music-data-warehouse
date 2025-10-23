@@ -1,0 +1,149 @@
+import os
+import csv
+import subprocess
+from kaggle.api.kaggle_api_extended import KaggleApi
+import yaml
+import shutil
+import getpass
+
+# Load the configuration from the YAML file
+with open("etl_config.yaml", "r") as config_file:
+    config = yaml.safe_load(config_file)
+
+# Set up paths from the config file
+RAW_DIR = config["raw_data_path"]
+PROC_DIR = config["processed_data_path"]
+MYSQL_UPLOAD_DIR = config["mysql_upload_dir"]
+os.makedirs(RAW_DIR, exist_ok=True)
+os.makedirs(PROC_DIR, exist_ok=True)
+
+# Define Kaggle dataset and file
+KAGGLE_DATASET = config["kaggle_dataset"]
+KAGGLE_FILE = config["kaggle_file"]
+RAW_PATH = os.path.join(RAW_DIR, KAGGLE_FILE)
+OUT_PATH = os.path.join(MYSQL_UPLOAD_DIR, "grammy_fixed.csv")
+
+# SQL file locations ; change these accordingly
+ROOT_DIR = "C:/jdayrit/STADVDB/music-data-warehouse/"  # Root directory for the project
+ETL_DIR = "C:/jdayrit/STADVDB/music-data-warehouse/ETL/"  # ETL folder
+
+# Update paths to reflect the correct locations
+LOAD_STAGING_SQL_PATH = os.path.join(ROOT_DIR, "load_staging.sql")
+ETL_POPULATION_SQL_PATH = os.path.join(ETL_DIR, "ETL_Population.sql")
+ETL_POPULATION_NODISCOGS_SQL_PATH = os.path.join(ETL_DIR, "ETL_Population_nodiscogs.sql")
+
+# Function to download Grammy dataset using Kaggle API
+def download_grammy_data():
+    api = KaggleApi()
+    api.authenticate()
+    print("Downloading Grammy dataset...")
+    try:
+        # Download the dataset (this will not be a ZIP file)
+        api.dataset_download_file(KAGGLE_DATASET, KAGGLE_FILE, path=RAW_DIR, quiet=False)
+
+        # Check if the downloaded file exists
+        if os.path.exists(RAW_PATH):
+            print(f"Downloaded Grammy dataset to {RAW_PATH}")
+        else:
+            print(f"Error: File not found at {RAW_PATH}")
+    except Exception as e:
+        print(f"Error downloading the dataset: {str(e)}")
+
+# Function to normalize the Grammy data
+def normalize_grammy_data():
+    try:
+        with open(RAW_PATH, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            rows = []
+
+            for row in reader:
+                # Normalize the columns to the staging table format
+                normalized_row = {
+                    "year": row.get("year") or row.get("Year") or "",
+                    "category": row.get("category") or row.get("Category") or "",
+                    "artist_name": row.get("artist_name") or row.get("Artist") or "",
+                    "song_album_name": row.get("song_album_name") or row.get("title") or "",
+                    "is_winner": row.get("is_winner") or row.get("Winner") or row.get("winner") or "",
+                }
+                rows.append(normalized_row)
+
+        # Write the normalized data to a CSV file
+        with open(OUT_PATH, "w", newline="", encoding="utf-8") as out_f:
+            writer = csv.DictWriter(out_f, fieldnames=["year", "category", "artist_name", "song_album_name", "is_winner"])
+            writer.writeheader()
+            writer.writerows(rows)
+
+        print(f"Normalized Grammy data written to {OUT_PATH}")
+    except Exception as e:
+        print(f"Error during normalization: {str(e)}")
+
+# Function to create the MySQL database if it doesn't exist
+def create_mysql_database():
+    try:
+        print(f"Creating MySQL database {config['mysql_database']} if it doesn't exist...")
+
+        # Securely prompt for the MySQL password
+        mysql_password = getpass.getpass(prompt="Enter MySQL password: ")
+
+        command = [
+            "mysql",
+            "-u", config["mysql_user"],
+            "-p" + mysql_password,  # Provide the password here
+            "-e", f"CREATE DATABASE IF NOT EXISTS {config['mysql_database']};"
+        ]
+        # Run the MySQL command to create the database
+        subprocess.run(command, check=True, shell=True)
+        print(f"Successfully created or verified database: {config['mysql_database']}")
+    except subprocess.CalledProcessError as e:
+        print(f"Error creating database: {str(e)}")
+
+# Function to run MySQL scripts
+def run_mysql_script(script_path):
+    try:
+        print(f"Running MySQL script: {script_path}")
+
+        # Securely prompt for the MySQL password
+        mysql_password = getpass.getpass(prompt="Enter MySQL password: ")
+
+        # Get the absolute path of the SQL script
+        script_abs_path = os.path.abspath(script_path)
+
+        # Create the full command to run MySQL script
+        command = [
+            "mysql",
+            "-u", config["mysql_user"],
+            "-p" + mysql_password,  # Provide the password here
+            config["mysql_database"],
+            "-e", f"source {script_abs_path}"  # Use the absolute path for the script
+        ]
+
+        # Run the MySQL command using subprocess
+        subprocess.run(command, check=True, shell=True)  # Using shell=True for proper handling
+        print(f"Successfully executed {script_path}")
+    except subprocess.CalledProcessError as e:
+        print(f"Error executing MySQL script: {str(e)}")
+
+def main():
+    """
+    Main function to orchestrate the ETL process.
+    """
+    # Step 1: Create the MySQL database if it doesn't exist
+    create_mysql_database()
+
+    # Step 2: Download Grammy dataset
+    download_grammy_data()
+
+    # Step 3: Normalize the data
+    normalize_grammy_data()
+
+    # Step 4: Execute MySQL scripts
+    print("Running load_staging.sql...")
+    run_mysql_script(LOAD_STAGING_SQL_PATH)
+
+    print("Running ETL_Population.sql...")
+    run_mysql_script(ETL_POPULATION_SQL_PATH)  # You can swap this with ETL_Population_nodiscogs.sql if needed
+
+    print("ETL process complete.")
+
+if __name__ == "__main__":
+    main()

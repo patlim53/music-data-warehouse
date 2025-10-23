@@ -1,0 +1,17 @@
+# ETL Configuration for Grammy Dataset and Database Paths
+
+# Paths for storing raw and processed data
+raw_data_path: "../raw"
+processed_data_path: "../processed"
+mysql_upload_dir: "C:/ProgramData/MySQL/MySQL Server 8.0/Uploads/"
+
+# Kaggle Dataset Configuration
+kaggle_dataset: "johnpendenque/grammy-winners-and-nominees-from-1965-to-2024"
+kaggle_file: "grammy_winners.csv"  # File name inside the Kaggle dataset
+
+# MySQL Configuration
+mysql_host: "localhost"
+mysql_user: "root"
+mysql_password: "admin123"  # change this to your password
+mysql_database: "music_source"  # Staging database for raw data
+mysql_table: "stage_grammy"  # Table to load Grammy data into
