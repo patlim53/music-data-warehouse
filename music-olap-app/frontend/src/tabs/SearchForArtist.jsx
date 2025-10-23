@@ -140,9 +140,6 @@ export default function SearchForArtist({ apiBaseUrl }) {
                           Year
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Category
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Result
                         </th>
                       </tr>
@@ -155,9 +152,6 @@ export default function SearchForArtist({ apiBaseUrl }) {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
                             {grammy.year}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-800">
-                            {grammy.category}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
                             <span className={`px-2 py-1 rounded-full text-xs font-semibold ${

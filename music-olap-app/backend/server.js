@@ -216,13 +216,20 @@ app.get('/api/artist/:id/grammys', async (req, res) => {
 
         const query = `
             SELECT 
-                dg.song_album_name,
-                dg.year_nominated AS year,
-                dg.category,
-                dg.result
-            FROM dim_grammy dg
-            WHERE dg.artist_id = ?
-            ORDER BY dg.year_nominated DESC
+                ds.track_name AS song_album_name,
+                dd.year AS year,
+                CASE 
+                    WHEN fsp.is_winner = 1 THEN 'Won'
+                    WHEN fsp.is_winner = 0 THEN 'Nominated'
+                    ELSE 'Unknown'
+                END AS result
+            FROM fact_song_performance fsp
+            JOIN dim_song ds ON fsp.song_id = ds.song_id
+            JOIN dim_date dd ON fsp.date_id = dd.date_id
+            JOIN dim_platform dp ON fsp.platform_id = dp.platform_id
+            WHERE fsp.artist_id = ? 
+            AND dp.platform_name = 'Grammy'
+            ORDER BY dd.year DESC
         `;
 
         const [grammyHistory] = await pool.query(query, [artistId]);
@@ -239,11 +246,12 @@ app.get('/api/artist/:id/producers', async (req, res) => {
         const artistId = req.params.id;
 
         const query = `
-            SELECT DISTINCT dp.producer_name
-            FROM dim_producer dp
-            JOIN bridge_artist_producer bap ON dp.producer_id = bap.producer_id
-            WHERE bap.artist_id = ?
-            ORDER BY dp.producer_name ASC
+            SELECT DISTINCT da.artist_name AS producer_name
+            FROM fact_song_performance fsp
+            JOIN dim_artist da ON fsp.producer_id = da.artist_id
+            WHERE fsp.artist_id = ? 
+            AND fsp.producer_id IS NOT NULL
+            ORDER BY da.artist_name ASC
         `;
 
         const [producers] = await pool.query(query, [artistId]);
