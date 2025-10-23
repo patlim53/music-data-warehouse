@@ -9,7 +9,7 @@ export default function Sidebar({ activeTab, setActiveTab }) {
   ];
 
   return (
-    <nav className="w-64 bg-white shadow-lg p-5 hidden md:block">
+    <nav className="w-64 bg-white shadow-lg p-5 hidden md:block min-h-screen">
       {/* Logo/Title Section */}
       <div className="flex items-center mb-10">
         <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
