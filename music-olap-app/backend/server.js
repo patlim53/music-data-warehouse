@@ -74,8 +74,12 @@ app.get('/api/kpis', async (req, res) => {
             // Grammy only - no streams/views data
             query = `
                 SELECT
-                    (SELECT COUNT(DISTINCT artist_id) FROM dim_grammy) AS total_artists,
-                    (SELECT COUNT(DISTINCT song_album_name) FROM dim_grammy) AS total_songs,
+                    (SELECT COUNT(DISTINCT fs.artist_id) 
+                     FROM fact_song_performance fs 
+                     WHERE fs.platform_id = (SELECT platform_id FROM dim_platform WHERE platform_name = 'Grammy')) AS total_artists,
+                    (SELECT COUNT(DISTINCT fs.song_id) 
+                     FROM fact_song_performance fs 
+                     WHERE fs.platform_id = (SELECT platform_id FROM dim_platform WHERE platform_name = 'Grammy')) AS total_songs,
                     NULL AS total_streams_views
             `;
         }
