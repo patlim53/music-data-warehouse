@@ -1,7 +1,8 @@
 -- =====================================
 -- 🛠 DATABASE SETUP
 -- =====================================
--- This script creates the 'music_source' database and all staging tables.
+-- This script creates the 'music_source' database, all staging tables,
+-- loads the data from CSVs, and then builds performance indexes.
 -- It's designed to be run multiple times safely.
 
 -- Create the database if it doesn't already exist
@@ -11,12 +12,17 @@ CREATE DATABASE IF NOT EXISTS music_source;
 USE music_source;
 
 -- =====================================
+-- ⚙️ SESSION CONFIGURATION
+-- =====================================
+-- Increase timeouts to prevent errors during large data loads.
+SET SESSION net_read_timeout = 3600;
+SET SESSION net_write_timeout = 3600;
+
+-- =====================================
 -- 🛠 CREATE STAGING TABLES
 -- =====================================
 
 -- 1️⃣ stage_spotify
--- NOTE: This table's columns (e.g., 'chart_rank') match the final desired names.
--- The LOAD DATA command will map CSV columns ('rank_val') to these names.
 DROP TABLE IF EXISTS stage_spotify;
 CREATE TABLE stage_spotify (
   `chart_rank` int DEFAULT NULL,
@@ -165,11 +171,35 @@ SET
   producers = NULL,
   url = NULL;
 
+
+-- =====================================
+-- 🚀 BUILD PERFORMANCE INDEXES
+-- =====================================
+-- This is the most important optimization step.
+-- We create indexes AFTER loading the data, which is faster.
+-- These indexes will make the main ETL script (that populates
+-- the data warehouse) run quickly.
+
+SELECT 'Creating indexes on staging tables. This may take a few minutes...' AS status;
+
+CREATE INDEX idx_stage_spotify_track ON stage_spotify (track_name);
+CREATE INDEX idx_stage_spotify_artist ON stage_spotify (artist_name);
+
+CREATE INDEX idx_stage_youtube_track ON stage_youtube (track_name);
+CREATE INDEX idx_stage_youtube_artist ON stage_youtube (artist_name);
+
+CREATE INDEX idx_stage_grammy_song ON stage_grammy (song_album_name);
+CREATE INDEX idx_stage_grammy_artist ON stage_grammy (artist_name);
+
+CREATE INDEX idx_stage_discogs_track ON stage_discogs (track_title);
+CREATE INDEX idx_stage_discogs_artist ON stage_discogs (artist_name);
+CREATE INDEX idx_stage_discogs_producer ON stage_discogs (producer_name);
+
 -- =====================================
 -- ↩️ Restore original SQL mode
 -- =====================================
 SET GLOBAL sql_mode = @OLD_SQL_MODE;
 
 -- Done loading staging tables
-SELECT '✅ All staging tables created and loaded successfully.' AS status;
+SELECT '✅ All staging tables created, loaded, and indexed successfully.' AS status;
 
