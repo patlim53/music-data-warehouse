@@ -16,27 +16,62 @@ export default function SearchForArtist({ apiBaseUrl }) {
   const [grammyHistory, setGrammyHistory] = useState([]);
   const [producerCredits, setProducerCredits] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Pagination state
+  const [grammyPage, setGrammyPage] = useState(1);
+  const [grammyTotalPages, setGrammyTotalPages] = useState(1);
+  const [producerPage, setProducerPage] = useState(1);
+  const [producerTotalPages, setProducerTotalPages] = useState(1);
+  const ITEMS_PER_PAGE = 5;
 
   const handleSelectArtist = (artist) => {
     setSelectedArtist(artist);
     setIsLoading(true);
+    
+    // Reset pagination
+    setGrammyPage(1);
+    setProducerPage(1);
 
-    // Fetch artist details
+    // Fetch artist details and paginated data
     Promise.all([
       fetch(`${apiBaseUrl}/artist/${artist.artist_id}`).then(res => res.json()),
-      fetch(`${apiBaseUrl}/artist/${artist.artist_id}/grammys`).then(res => res.json()),
-      fetch(`${apiBaseUrl}/artist/${artist.artist_id}/producers`).then(res => res.json())
+      fetch(`${apiBaseUrl}/artist/${artist.artist_id}/grammys?page=1&limit=${ITEMS_PER_PAGE}`).then(res => res.json()),
+      fetch(`${apiBaseUrl}/artist/${artist.artist_id}/producers?page=1&limit=${ITEMS_PER_PAGE}`).then(res => res.json())
     ])
       .then(([details, grammys, producers]) => {
         setArtistData(details);
-        setGrammyHistory(grammys);
-        setProducerCredits(producers);
+        setGrammyHistory(grammys.data || []);
+        setGrammyTotalPages(grammys.totalPages || 1);
+        setProducerCredits(producers.data || []);
+        setProducerTotalPages(producers.totalPages || 1);
         setIsLoading(false);
       })
       .catch(error => {
         console.error('Error fetching artist data:', error);
         setIsLoading(false);
       });
+  };
+
+  // Fetch Grammy history for a specific page
+  const fetchGrammyPage = (page) => {
+    fetch(`${apiBaseUrl}/artist/${selectedArtist.artist_id}/grammys?page=${page}&limit=${ITEMS_PER_PAGE}`)
+      .then(res => res.json())
+      .then(grammys => {
+        setGrammyHistory(grammys.data || []);
+        setGrammyPage(page);
+      })
+      .catch(error => console.error('Error fetching Grammy page:', error));
+  };
+
+  // Fetch Producer credits for a specific page
+  const fetchProducerPage = (page) => {
+    fetch(`${apiBaseUrl}/artist/${selectedArtist.artist_id}/producers?page=${page}&limit=${ITEMS_PER_PAGE}`)
+      .then(res => res.json())
+      .then(producers => {
+        setProducerCredits(producers.data || []);
+        setProducerPage(page);
+      })
+      .catch(error => console.error('Error fetching Producer page:', error));
   };
 
   return (
@@ -97,24 +132,57 @@ export default function SearchForArtist({ apiBaseUrl }) {
               </div>
               <div className="overflow-x-auto">
                 {producerCredits.length > 0 ? (
-                  <table className="w-full">
-                    <thead className="bg-gray-100">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Producer Name
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {producerCredits.map((producer, index) => (
-                        <tr key={index} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
-                            {producer.producer_name}
-                          </td>
+                  <>
+                    <table className="w-full">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Producer Name
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {producerCredits.map((producer, index) => (
+                          <tr key={index} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
+                              {producer.producer_name}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    
+                    {/* Pagination Controls */}
+                    {producerTotalPages > 1 && (
+                      <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+                        <button
+                          onClick={() => fetchProducerPage(producerPage - 1)}
+                          disabled={producerPage === 1}
+                          className={`px-4 py-2 text-sm font-medium rounded-md ${
+                            producerPage === 1
+                              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                              : 'bg-blue-600 text-white hover:bg-blue-700'
+                          }`}
+                        >
+                          Previous
+                        </button>
+                        <span className="text-sm text-gray-700">
+                          Page {producerPage} of {producerTotalPages}
+                        </span>
+                        <button
+                          onClick={() => fetchProducerPage(producerPage + 1)}
+                          disabled={producerPage === producerTotalPages}
+                          className={`px-4 py-2 text-sm font-medium rounded-md ${
+                            producerPage === producerTotalPages
+                              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                              : 'bg-blue-600 text-white hover:bg-blue-700'
+                          }`}
+                        >
+                          Next
+                        </button>
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <div className="px-6 py-8 text-center text-gray-500">
                     No producer credits available
@@ -130,42 +198,75 @@ export default function SearchForArtist({ apiBaseUrl }) {
               </div>
               <div className="overflow-x-auto">
                 {grammyHistory.length > 0 ? (
-                  <table className="w-full">
-                    <thead className="bg-gray-100">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Song/Album
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Year
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Result
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {grammyHistory.map((grammy, index) => (
-                        <tr key={index} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
-                            {grammy.song_album_name}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
-                            {grammy.year}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                              grammy.result === 'Won' 
-                                ? 'bg-green-100 text-green-800' 
-                                : 'bg-gray-100 text-gray-800'
-                            }`}>
-                              {grammy.result}
-                            </span>
-                          </td>
+                  <>
+                    <table className="w-full">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Song/Album
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Year
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Result
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {grammyHistory.map((grammy, index) => (
+                          <tr key={index} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
+                              {grammy.song_album_name}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
+                              {grammy.year}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                grammy.result === 'Won' 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {grammy.result}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    
+                    {/* Pagination Controls */}
+                    {grammyTotalPages > 1 && (
+                      <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+                        <button
+                          onClick={() => fetchGrammyPage(grammyPage - 1)}
+                          disabled={grammyPage === 1}
+                          className={`px-4 py-2 text-sm font-medium rounded-md ${
+                            grammyPage === 1
+                              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                              : 'bg-blue-600 text-white hover:bg-blue-700'
+                          }`}
+                        >
+                          Previous
+                        </button>
+                        <span className="text-sm text-gray-700">
+                          Page {grammyPage} of {grammyTotalPages}
+                        </span>
+                        <button
+                          onClick={() => fetchGrammyPage(grammyPage + 1)}
+                          disabled={grammyPage === grammyTotalPages}
+                          className={`px-4 py-2 text-sm font-medium rounded-md ${
+                            grammyPage === grammyTotalPages
+                              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                              : 'bg-blue-600 text-white hover:bg-blue-700'
+                          }`}
+                        >
+                          Next
+                        </button>
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <div className="px-6 py-8 text-center text-gray-500">
                     No Grammy history available

@@ -217,8 +217,21 @@ app.get('/api/artist/:id', async (req, res) => {
 app.get('/api/artist/:id/grammys', async (req, res) => {
     try {
         const artistId = req.params.id;
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 5;
+        const offset = (page - 1) * limit;
 
-        const query = `
+        // Get total count for pagination
+        const countQuery = `
+            SELECT COUNT(*) as total
+            FROM fact_song_performance fsp
+            JOIN dim_platform dp ON fsp.platform_id = dp.platform_id
+            WHERE fsp.artist_id = ? 
+            AND dp.platform_name = 'Grammy'
+        `;
+
+        // Get paginated data
+        const dataQuery = `
             SELECT 
                 ds.track_name AS song_album_name,
                 dd.year AS year,
@@ -234,10 +247,18 @@ app.get('/api/artist/:id/grammys', async (req, res) => {
             WHERE fsp.artist_id = ? 
             AND dp.platform_name = 'Grammy'
             ORDER BY dd.year DESC
+            LIMIT ? OFFSET ?
         `;
 
-        const [grammyHistory] = await pool.query(query, [artistId]);
-        res.json(grammyHistory);
+        const [[{ total }]] = await pool.query(countQuery, [artistId]);
+        const [grammyHistory] = await pool.query(dataQuery, [artistId, limit, offset]);
+
+        res.json({
+            data: grammyHistory,
+            currentPage: page,
+            totalPages: Math.ceil(total / limit),
+            totalItems: total
+        });
     } catch (error) {
         console.error('Error fetching Grammy history:', error);
         res.status(500).json({ error: 'Failed to fetch Grammy history' });
@@ -248,18 +269,39 @@ app.get('/api/artist/:id/grammys', async (req, res) => {
 app.get('/api/artist/:id/producers', async (req, res) => {
     try {
         const artistId = req.params.id;
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 5;
+        const offset = (page - 1) * limit;
 
-        const query = `
+        // Get total count for pagination
+        const countQuery = `
+            SELECT COUNT(DISTINCT da.artist_id) as total
+            FROM fact_song_performance fsp
+            JOIN dim_artist da ON fsp.producer_id = da.artist_id
+            WHERE fsp.artist_id = ? 
+            AND fsp.producer_id IS NOT NULL
+        `;
+
+        // Get paginated data
+        const dataQuery = `
             SELECT DISTINCT da.artist_name AS producer_name
             FROM fact_song_performance fsp
             JOIN dim_artist da ON fsp.producer_id = da.artist_id
             WHERE fsp.artist_id = ? 
             AND fsp.producer_id IS NOT NULL
             ORDER BY da.artist_name ASC
+            LIMIT ? OFFSET ?
         `;
 
-        const [producers] = await pool.query(query, [artistId]);
-        res.json(producers);
+        const [[{ total }]] = await pool.query(countQuery, [artistId]);
+        const [producers] = await pool.query(dataQuery, [artistId, limit, offset]);
+
+        res.json({
+            data: producers,
+            currentPage: page,
+            totalPages: Math.ceil(total / limit),
+            totalItems: total
+        });
     } catch (error) {
         console.error('Error fetching producer credits:', error);
         res.status(500).json({ error: 'Failed to fetch producer credits' });
