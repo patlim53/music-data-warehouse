@@ -232,7 +232,7 @@ WHERE s.song_id IS NOT NULL AND a.artist_id IS NOT NULL;
 -- STEP 4: Load Discogs Producer Data (SKIPPED FOR FASTER TESTING)
 -- ----------------------------------------------------------------
 -- This query is commented out to allow for a faster run.
-
+/*
 INSERT INTO fact_song_performance (song_id, artist_id, producer_id, platform_id, date_id)
 SELECT STRAIGHT_JOIN
     s.song_id,
@@ -247,12 +247,12 @@ JOIN dim_artist prod ON d.producer_name = prod.artist_name
 JOIN dim_platform p ON p.platform_name = 'Discogs'
 -- OPTIMIZATION: Only insert rows that actually have a producer
 WHERE d.producer_name IS NOT NULL AND d.producer_name != '';
-
+*/
 
 
 -- ----------------------------------------------------------------
 -- ETL Process Complete
 -- ----------------------------------------------------------------
 
-SELECT '✅ Full ETL Process Complete. (Discogs load not skipped)' AS status;
+SELECT '✅ Full ETL Process Complete. (Discogs load skipped)' AS status;
 
