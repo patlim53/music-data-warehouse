@@ -188,7 +188,12 @@ SELECT
     a.artist_id,
     p.platform_id,
     d.date_id,
-    g.is_winner
+    -- FIX: Convert the text 'True'/'False' from the CSV into a number (1/0)
+    CASE 
+        WHEN g.is_winner = 'True' THEN 1
+        WHEN g.is_winner = 'False' THEN 0
+        ELSE NULL 
+    END AS is_winner
 FROM music_source.stage_grammy g
 JOIN dim_song s ON g.song_album_name = s.track_name
 JOIN dim_artist a ON g.artist_name = a.artist_name
