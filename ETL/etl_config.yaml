@@ -1,8 +1,8 @@
 # ETL Configuration for Grammy Dataset and Database Paths
 
 # Paths for storing raw and processed data
-raw_data_path: "../raw"
-processed_data_path: "../processed"
+raw_data_path: "raw"
+processed_data_path: "processed"
 mysql_upload_dir: "C:/ProgramData/MySQL/MySQL Server 8.0/Uploads/"
 
 # Kaggle Dataset Configuration

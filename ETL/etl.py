@@ -68,8 +68,8 @@ def normalize_grammy_data():
                 normalized_row = {
                     "year": row.get("year") or row.get("Year") or "",
                     "category": row.get("category") or row.get("Category") or "",
-                    "artist_name": row.get("artist_name") or row.get("Artist") or "",
-                    "song_album_name": row.get("song_album_name") or row.get("title") or "",
+                    "artist_name": row.get("artist_name") or row.get("artist") or "",
+                    "song_album_name": row.get("song_album_name") or row.get("song_or_album") or "",
                     "is_winner": row.get("is_winner") or row.get("Winner") or row.get("winner") or "",
                 }
                 rows.append(normalized_row)
