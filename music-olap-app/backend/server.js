@@ -159,27 +159,50 @@ app.get('/api/song-rankings', async (req, res) => {
 
         if (platform === 'spotify') {
             query = `
-                SELECT ds.track_name, MAX(fs.weeks_on_chart) as total_metric
-                FROM fact_song_performance fs
-                JOIN dim_song ds ON fs.song_id = ds.song_id
-                JOIN dim_platform dp ON fs.platform_id = dp.platform_id
-                WHERE dp.platform_name = 'Spotify' AND fs.weeks_on_chart IS NOT NULL
-                GROUP BY ds.track_name
-                ORDER BY total_metric DESC
-                LIMIT 10
+            SELECT ds.track_name, MAX(fs.weeks_on_chart) AS total_metric
+            FROM fact_song_performance fs
+            JOIN dim_song ds ON fs.song_id = ds.song_id
+            JOIN dim_platform dp ON fs.platform_id = dp.platform_id
+            WHERE dp.platform_name = 'Spotify'
+            AND fs.weeks_on_chart IS NOT NULL
+            GROUP BY ds.song_id, ds.track_name
+            ORDER BY total_metric DESC
+            LIMIT 10
             `;
+            /*
+            old query
+            SELECT ds.track_name, MAX(fs.weeks_on_chart) as total_metric
+            FROM fact_song_performance fs
+            JOIN dim_song ds ON fs.song_id = ds.song_id
+            JOIN dim_platform dp ON fs.platform_id = dp.platform_id
+            WHERE dp.platform_name = 'Spotify' AND fs.weeks_on_chart IS NOT NULL
+            GROUP BY ds.track_name
+            ORDER BY total_metric DESC
+            LIMIT 10
+            */
         } else {
             // YouTube
             query = `
-                SELECT ds.track_name, MAX(fs.weeks_on_chart) as total_metric
-                FROM fact_song_performance fs
-                JOIN dim_song ds ON fs.song_id = ds.song_id
-                JOIN dim_platform dp ON fs.platform_id = dp.platform_id
-                WHERE dp.platform_name = 'YouTube' AND fs.weeks_on_chart IS NOT NULL
-                GROUP BY ds.track_name
-                ORDER BY total_metric DESC
-                LIMIT 10
+            SELECT ds.track_name, MAX(fs.weeks_on_chart) AS total_metric
+            FROM fact_song_performance fs
+            JOIN dim_song ds ON fs.song_id = ds.song_id
+            JOIN dim_platform dp ON fs.platform_id = dp.platform_id
+            WHERE dp.platform_name = 'YouTube' 
+            AND fs.weeks_on_chart IS NOT NULL
+            GROUP BY ds.song_id, ds.track_name -- The essential optimization: Grouping by integer ID first
+            ORDER BY total_metric DESC
+            LIMIT 10
             `;
+            /*
+            SELECT ds.track_name, MAX(fs.weeks_on_chart) as total_metric
+            FROM fact_song_performance fs
+            JOIN dim_song ds ON fs.song_id = ds.song_id
+            JOIN dim_platform dp ON fs.platform_id = dp.platform_id
+            WHERE dp.platform_name = 'YouTube' AND fs.weeks_on_chart IS NOT NULL
+            GROUP BY ds.track_name
+            ORDER BY total_metric DESC
+            LIMIT 10
+            */
         }
 
         const [rankings] = await pool.query(query);
