@@ -149,10 +149,28 @@ def main():
     print("Running load_staging.sql...")
     run_mysql_script(LOAD_STAGING_SQL_PATH)
 
-    print("Running ETL_Population.sql...")
-    run_mysql_script(ETL_POPULATION_SQL_PATH) # You can swap this with ETL_Population_nodiscogs.sql if needed
+    # --- NEW: User choice for ETL script ---
+    print("\n--- ETL Population Choice ---")
+    print("Which ETL script do you want to run?")
+    print("  [1] FULL ETL (Includes the very long Discogs query. This can take over 40 minutes.)")
+    print("  [2] FAST ETL (Skips the Discogs query for quick testing.)")
 
-    print("ETL process complete.")
+    choice = ""
+    while choice not in ['1', '2']:
+        choice = input("Enter your choice (1 or 2): ").strip()
+        if choice not in ['1', '2']:
+            print("Invalid choice. Please enter 1 or 2.")
+
+    if choice == '1':
+        print("\nRunning FULL ETL_Population.sql...")
+        run_mysql_script(ETL_POPULATION_SQL_PATH)
+    else: # choice must be '2'
+        print("\nRunning FAST ETL_Population_nodiscogs.sql...")
+        run_mysql_script(ETL_POPULATION_NODISCOGS_SQL_PATH)
+    # --- END OF NEW CODE ---
+
+    print("\nETL process complete.")
 
 if __name__ == "__main__":
     main()
+
