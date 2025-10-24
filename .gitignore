@@ -1,6 +1,7 @@
 # Ignore everything inside these folders
 raw/*
 processed/*
+ETL/etl_config.yaml
 
 # But keep the folders themselves (so Git doesn’t delete them)
 !raw/.gitkeep

@@ -4,15 +4,23 @@ import subprocess
 from kaggle.api.kaggle_api_extended import KaggleApi
 import yaml
 import shutil
-import getpass
+import getpass # Keep getpass as a fallback, but we'll use the config
+
+# --- GENERALIZED PATHS ---
+# Get the absolute path of the directory containing this Python script (etl.py)
+ETL_DIR = os.path.dirname(os.path.abspath(__file__))
+# The project's ROOT_DIR is the parent directory of the ETL_DIR
+ROOT_DIR = os.path.dirname(ETL_DIR)
+# --- END GENERALIZED PATHS ---
 
 # Load the configuration from the YAML file
-with open("etl_config.yaml", "r") as config_file:
+CONFIG_PATH = os.path.join(ETL_DIR, "etl_config.yaml")
+with open(CONFIG_PATH, "r") as config_file:
     config = yaml.safe_load(config_file)
 
 # Set up paths from the config file
-RAW_DIR = config["raw_data_path"]
-PROC_DIR = config["processed_data_path"]
+RAW_DIR = os.path.join(ROOT_DIR, config["raw_data_path"])
+PROC_DIR = os.path.join(ROOT_DIR, config["processed_data_path"])
 MYSQL_UPLOAD_DIR = config["mysql_upload_dir"]
 os.makedirs(RAW_DIR, exist_ok=True)
 os.makedirs(PROC_DIR, exist_ok=True)
@@ -21,16 +29,15 @@ os.makedirs(PROC_DIR, exist_ok=True)
 KAGGLE_DATASET = config["kaggle_dataset"]
 KAGGLE_FILE = config["kaggle_file"]
 RAW_PATH = os.path.join(RAW_DIR, KAGGLE_FILE)
-OUT_PATH = os.path.join(MYSQL_UPLOAD_DIR, "grammy_fixed.csv")
-
-# SQL file locations ; change these accordingly
-ROOT_DIR = "C:/jdayrit/STADVDB/music-data-warehouse/"  # Root directory for the project
-ETL_DIR = "C:/jdayrit/STADVDB/music-data-warehouse/ETL/"  # ETL folder
+OUT_PATH = os.path.join(MYSQL_UPLOAD_DIR, config["normalized_output_file"])
 
 # Update paths to reflect the correct locations
 LOAD_STAGING_SQL_PATH = os.path.join(ROOT_DIR, "load_staging.sql")
 ETL_POPULATION_SQL_PATH = os.path.join(ETL_DIR, "ETL_Population.sql")
 ETL_POPULATION_NODISCOGS_SQL_PATH = os.path.join(ETL_DIR, "ETL_Population_nodiscogs.sql")
+
+# --- (Your download_grammy_data and normalize_grammy_data functions go here) ---
+# ... (omitted for brevity, they don't need changes) ...
 
 # Function to download Grammy dataset using Kaggle API
 def download_grammy_data():
@@ -82,13 +89,14 @@ def create_mysql_database():
     try:
         print(f"Creating MySQL database {config['mysql_database']} if it doesn't exist...")
 
-        # Securely prompt for the MySQL password
-        mysql_password = getpass.getpass(prompt="Enter MySQL password: ")
+        # --- FIX: Read password and exe_path from config ---
+        mysql_password = config["mysql_password"]
+        mysql_exe_path = config["mysql_executable_path"]
 
         command = [
-            "mysql",
+            mysql_exe_path, # Use the full path
             "-u", config["mysql_user"],
-            "-p" + mysql_password,  # Provide the password here
+            "-p" + mysql_password,
             "-e", f"CREATE DATABASE IF NOT EXISTS {config['mysql_database']};"
         ]
         # Run the MySQL command to create the database
@@ -102,23 +110,24 @@ def run_mysql_script(script_path):
     try:
         print(f"Running MySQL script: {script_path}")
 
-        # Securely prompt for the MySQL password
-        mysql_password = getpass.getpass(prompt="Enter MySQL password: ")
+        # --- FIX: Read password and exe_path from config ---
+        mysql_password = config["mysql_password"]
+        mysql_exe_path = config["mysql_executable_path"]
 
         # Get the absolute path of the SQL script
         script_abs_path = os.path.abspath(script_path)
 
         # Create the full command to run MySQL script
         command = [
-            "mysql",
+            mysql_exe_path, # Use the full path
             "-u", config["mysql_user"],
-            "-p" + mysql_password,  # Provide the password here
+            "-p" + mysql_password,
             config["mysql_database"],
-            "-e", f"source {script_abs_path}"  # Use the absolute path for the script
+            "-e", f"source {script_abs_path}"
         ]
 
         # Run the MySQL command using subprocess
-        subprocess.run(command, check=True, shell=True)  # Using shell=True for proper handling
+        subprocess.run(command, check=True, shell=True)
         print(f"Successfully executed {script_path}")
     except subprocess.CalledProcessError as e:
         print(f"Error executing MySQL script: {str(e)}")
@@ -141,7 +150,7 @@ def main():
     run_mysql_script(LOAD_STAGING_SQL_PATH)
 
     print("Running ETL_Population.sql...")
-    run_mysql_script(ETL_POPULATION_SQL_PATH)  # You can swap this with ETL_Population_nodiscogs.sql if needed
+    run_mysql_script(ETL_POPULATION_SQL_PATH) # You can swap this with ETL_Population_nodiscogs.sql if needed
 
     print("ETL process complete.")
 

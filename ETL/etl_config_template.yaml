@@ -13,7 +13,7 @@ normalized_output_file: "grammy_fixed.csv"
 # MySQL Configuration
 mysql_host: "localhost"
 mysql_user: "root"
-mysql_password: "Derp634Derp634" # change this to your password
+mysql_password: "PASSWORD HERE" # change this to your password
 mysql_database: "music_source" # Staging database for raw data
 mysql_table: "stage_grammy" # Table to load Grammy data into
 # --- ADD THIS LINE ---
