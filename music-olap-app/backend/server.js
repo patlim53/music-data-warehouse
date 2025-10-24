@@ -103,15 +103,35 @@ app.get('/api/artist-rankings', async (req, res) => {
                 SELECT da.artist_name, SUM(fs.streams) as total_metric
                 FROM fact_song_performance fs
                 JOIN dim_artist da ON fs.artist_id = da.artist_id
+                WHERE fs.platform_id = 1
+                GROUP BY da.artist_name
+                ORDER BY total_metric DESC
+                LIMIT 10;
+            `;
+            /*
+            old query
+                SELECT da.artist_name, SUM(fs.streams) as total_metric
+                FROM fact_song_performance fs
+                JOIN dim_artist da ON fs.artist_id = da.artist_id
                 JOIN dim_platform dp ON fs.platform_id = dp.platform_id
                 WHERE dp.platform_name = 'Spotify'
                 GROUP BY da.artist_name
                 ORDER BY total_metric DESC
-                LIMIT 10
-            `;
+                LIMIT 10;
+            */
         } else {
             // YouTube
             query = `
+                SELECT da.artist_name, SUM(fs.views) as total_metric
+                FROM fact_song_performance fs
+                JOIN dim_artist da ON fs.artist_id = da.artist_id
+                WHERE fs.platform_id = 2  -- Directly filter by the determined YouTube ID
+                GROUP BY da.artist_name
+                ORDER BY total_metric DESC
+                LIMIT 10;
+            `;
+            /*
+            old query
                 SELECT da.artist_name, SUM(fs.views) as total_metric
                 FROM fact_song_performance fs
                 JOIN dim_artist da ON fs.artist_id = da.artist_id
@@ -120,7 +140,7 @@ app.get('/api/artist-rankings', async (req, res) => {
                 GROUP BY da.artist_name
                 ORDER BY total_metric DESC
                 LIMIT 10
-            `;
+            */
         }
 
         const [rankings] = await pool.query(query);
